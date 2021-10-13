@@ -163,25 +163,7 @@
     graphs.push(generateGraph(fptsWeekBestGraph));
     graphs.push(generateGraph(epeWinPercGraph));
 
-    const transactions = [];
-
-    // for(const recordManID in waiversData) {
-    //     const waiver = waiversData[recordManID];
-
-    //     transactions.push({
-    //         recordManID: waiver.recordManID,
-    //         manager: waiver.manager,
-    //         waivers: waiver.waivers,
-    //         trades: waiver.waivers
-    //     })
-    // }
-
-    // for(const recordManID in tradesData) {
-    //     const trade = tradesData[recordManID];
-
-    //     transactions.trades += trade.trades;
-    // }
-    
+    const transactions = []; 
     
     for(let i = 1; i <= numManagers; i++) {
         if(waiversData.find(w => w.recordManID == i)) {
@@ -537,113 +519,77 @@
 
 <h4>{prefix} Records</h4>
 
-<div class="testHolder">
-    <div class="testInner">
-        <div class="testWrapper">
-            {#if weekRecords && weekRecords.length}
-                <DataTable class="recordTable">
-                    <Head>
-                        <Row>
-                            <Cell class="header" colspan=5>{prefix} Single-Week Scoring Records</Cell>
-                        </Row>
-                        <Row>
-                            <Cell class="header rank"></Cell>
-                            <Cell class="header">Manager</Cell>
-                                {#if allTime}
-                                    <Cell class="header">Year</Cell>
-                                {/if}
-                            <Cell class="header">Week</Cell>
-                            <Cell class="header">PF</Cell>
-                        </Row>
-                    </Head>
-                    <Body>
-                        {#each weekRecords as leagueWeekRecord, ix}
-                            <Row>
-                                <Cell class="rank">{ix + 1}</Cell>
-                                <Cell class="cellName" on:click={() => gotoManager(leagueWeekRecord.recordManID)}>
-                                    {leagueWeekRecord.manager.realname}
-                                    {#if !allTime}
-                                        <div class="fantasyTeamName">({leagueWeekRecord.manager.name})</div>
-                                    {/if}
-                                </Cell>
-                                    {#if allTime}
-                                        <Cell class="center">{leagueWeekRecord.year}</Cell>
-                                    {/if}
-                                <Cell class="center">{leagueWeekRecord.week}</Cell>
-                                <Cell class="center">{round(leagueWeekRecord.fpts)}</Cell>
-                            </Row>
-                        {/each}
-                    </Body>
-                </DataTable>
-            {/if}
-        </div>
-
-        <div class="testWrapper">
-            {#if allTime}
-                <DataTable class="recordTable">
-                    <Head>
-                        <Row>
-                            <Cell class="header" colspan=5>{prefix} Season-Long Scoring Records</Cell>
-                        </Row>
-                        <Row>
-                            <Cell class="header rank"></Cell>
-                            <Cell class="header">Manager</Cell>
-                            <Cell class="header">Year</Cell>
-                            <Cell class="header">PF</Cell>
-                            <Cell class="header">PPG</Cell>
-                        </Row>
-                    </Head>
-                    <Body>
-                        {#each seasonLongRecords as mostSeasonLongPoint, ix}
-                            <Row>
-                                <Cell class="rank">{ix + 1}</Cell>
-                                <Cell class="cellName" on:click={() => gotoManager(mostSeasonLongPoint.recordManID)}>
-                                    {mostSeasonLongPoint.manager.realname}
-                                    {#if !allTime}
-                                        <div class="fantasyTeamName">({mostSeasonLongPoint.manager.name})</div>
-                                    {/if}
-                                </Cell>
-                                <Cell class="center">{mostSeasonLongPoint.year}</Cell>
-                                <Cell class="center">{round(mostSeasonLongPoint.fpts)}</Cell>
-                                <Cell class="center">{round(mostSeasonLongPoint.fptspg)}</Cell>
-                            </Row>
-                        {/each}
-                    </Body>
-                </DataTable>
-            {/if}
-        </div>
-    </div>
-</div>
-
-<!-- <div class="buttonHolder">
-    <Group variant="outlined">
-        {#each tables as table, ix}
-            <Button class="selectionButtons" on:click={() => curTable = ix} variant="{curTable == ix ? "raised" : "outlined"}">
-                <Label>{table}</Label>
-            </Button>
-        {/each}
-    </Group>
-</div> -->
-
-<div class="buttonHolderRecords">
-    <Group variant="outlined">
-        <!-- {#each tables as table, ix} -->
-            <Button class="selectionButtons" variant="raised">
-                <Label>TEST</Label>
-            </Button>
-        <!-- {/each} -->
-    </Group>
-
-    <Group variant="outlined">
-        <!-- {#each tables as table, ix} -->
-            <Button class="selectionButtons" variant="raised">
-                <Label>TEST</Label>
-            </Button>
-        <!-- {/each} -->
-    </Group>
-</div>
-
 <div class="fullFlex">
+    {#if weekRecords && weekRecords.length}
+	<DataTable class="recordTable">
+	    <Head>
+		<Row>
+		    <Cell class="header" colspan=5>{prefix} Single-Week Scoring Records</Cell>
+		</Row>
+		<Row>
+		    <Cell class="header rank"></Cell>
+		    <Cell class="header">Manager</Cell>
+			{#if allTime}
+			    <Cell class="header">Year</Cell>
+			{/if}
+		    <Cell class="header">Week</Cell>
+		    <Cell class="header">PF</Cell>
+		</Row>
+	    </Head>
+	    <Body>
+		{#each weekRecords as leagueWeekRecord, ix}
+		    <Row>
+			<Cell class="rank">{ix + 1}</Cell>
+			<Cell class="cellName" on:click={() => gotoManager(leagueWeekRecord.recordManID)}>
+			    {leagueWeekRecord.manager.realname}
+			    {#if !allTime}
+				<div class="fantasyTeamName">({leagueWeekRecord.manager.name})</div>
+			    {/if}
+			</Cell>
+			    {#if allTime}
+				<Cell class="center">{leagueWeekRecord.year}</Cell>
+			    {/if}
+			<Cell class="center">{leagueWeekRecord.week}</Cell>
+			<Cell class="center">{round(leagueWeekRecord.fpts)}</Cell>
+		    </Row>
+		{/each}
+	    </Body>
+	</DataTable>
+    {/if}
+
+    {#if allTime}
+	<DataTable class="recordTable">
+	    <Head>
+		<Row>
+		    <Cell class="header" colspan=5>{prefix} Season-Long Scoring Records</Cell>
+		</Row>
+		<Row>
+		    <Cell class="header rank"></Cell>
+		    <Cell class="header">Manager</Cell>
+		    <Cell class="header">Year</Cell>
+		    <Cell class="header">PF</Cell>
+		    <Cell class="header">PPG</Cell>
+		</Row>
+	    </Head>
+	    <Body>
+		{#each seasonLongRecords as mostSeasonLongPoint, ix}
+		    <Row>
+			<Cell class="rank">{ix + 1}</Cell>
+			<Cell class="cellName" on:click={() => gotoManager(mostSeasonLongPoint.recordManID)}>
+			    {mostSeasonLongPoint.manager.realname}
+			    {#if !allTime}
+				<div class="fantasyTeamName">({mostSeasonLongPoint.manager.name})</div>
+			    {/if}
+			</Cell>
+			<Cell class="center">{mostSeasonLongPoint.year}</Cell>
+			<Cell class="center">{round(mostSeasonLongPoint.fpts)}</Cell>
+			<Cell class="center">{round(mostSeasonLongPoint.fptspg)}</Cell>
+		    </Row>
+		{/each}
+	    </Body>
+	</DataTable>
+    {/if}
+
     {#if weekRecords && weekRecords.length}
         <DataTable class="recordTable">
             <Head>
