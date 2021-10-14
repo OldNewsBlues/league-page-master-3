@@ -1,5 +1,5 @@
 import { getLeagueData } from './leagueData';
-import { leagueID } from '$lib/utils/leagueInfo';
+import { leagueID, managers } from '$lib/utils/leagueInfo';
 import { getLeagueRosters } from "./leagueRosters"
 import { getLeagueUsers } from "./leagueUsers"
 import { waitForAll } from './multiPromise';
@@ -27,13 +27,15 @@ export const getUpcomingDraft = async () => {
 
 	for(const roster of rosters) {
 		const user = users[roster.owner_id];
+		const rosterID = roster.roster_id;
+		
 		if(user) {
-			originalManagers[roster.roster_id] = {
+			originalManagers[rosterID] = {
 				avatar: `https://sleepercdn.com/avatars/thumbs/${user.avatar}`,
 				name: user.metadata.team_name ? user.metadata.team_name : user.display_name,
 			}
 		} else {
-			originalManagers[roster.roster_id] = {
+			originalManagers[rosterID] = {
 				avatar: `https://sleepercdn.com/images/v2/icons/player_default.webp`,
 				name: 'Unknown Manager',
 			}
@@ -169,6 +171,8 @@ const completedNonAuction = ({players, draft, picks, originalManagers, draftOrde
 			position: playerData.metadata.position,
 			team: playerData.metadata.team,
 			avatar: playerData.metadata.position == "DEF" ? `background-image: url(https://sleepercdn.com/images/team_logos/nfl/${playerData.player_id.toLowerCase()}.png)` : `background-image: url(https://sleepercdn.com/content/nfl/players/thumb/${playerData.player_id}.jpg), url(https://sleepercdn.com/images/v2/icons/player_default.webp)`,
+			playerID: playerData.player_id,
+			rosterID: playerData.roster_id,
 		}
 		draft[playerData.round - 1][playerData.draft_slot - 1] = {player};
 	}
@@ -192,6 +196,8 @@ const completedAuction = ({players, draft, picks, originalManagers, draftOrder, 
 			team: playerData.metadata.team,
 			amount: playerData.metadata.amount,
 			avatar: playerData.metadata.position == "DEF" ? `background-image: url(https://sleepercdn.com/images/team_logos/nfl/${playerData.player_id.toLowerCase()}.png)` : `background-image: url(https://sleepercdn.com/content/nfl/players/thumb/${playerData.player_id}.jpg), url(https://sleepercdn.com/images/v2/icons/player_default.webp)`,
+			playerID: playerData.player_id,
+			rosterID: playerData.roster_id,
 		}
 		rosters[playerData.roster_id].push(player);
 	}
@@ -225,22 +231,62 @@ export const getPreviousDrafts = async () => {
 		const draftID = leagueData.draft_id;
 		let year = parseInt(leagueData.season);
 		curSeason = leagueData.previous_league_id;
+
+		let leagueManagers = {};
+
+		for(const managerID in managers) {
+			const manager = managers[managerID];
+	
+			const entryMan = {
+				managerID: manager.managerID,
+				rosterID: manager.roster,
+				name: manager.name,
+				status: manager.status,
+				yearsactive: manager.yearsactive,
+			}
+	
+			if(!leagueManagers[manager.roster]) {
+				leagueManagers[manager.roster] = [];
+			}
+			leagueManagers[manager.roster].push(entryMan);
+
+		}
 	
 		const rosters = rosterRes.rosters;
 	
 		const originalManagers = {};
+		const trueManagers = {};
 
 		for(const roster of rosters) {
 			const user = users[roster.owner_id];
+			const rosterID = roster.roster_id;
+
+			let recordManager = leagueManagers[rosterID].filter(m => m.yearsactive.includes(year));
+			let recordManID = recordManager[0].managerID;
+
 			if(user) {
-				originalManagers[roster.roster_id] = {
+				originalManagers[rosterID] = {
 					avatar: `https://sleepercdn.com/avatars/thumbs/${user.avatar}`,
 					name: user.metadata.team_name ? user.metadata.team_name : user.display_name,
 				}
 			} else {
-				originalManagers[roster.roster_id] = {
+				originalManagers[rosterID] = {
 					avatar: `https://sleepercdn.com/images/v2/icons/player_default.webp`,
 					name: 'Unknown Manager',
+				}
+			}
+
+			if(user) {
+				trueManagers[recordManID] = {
+					avatar: `https://sleepercdn.com/avatars/thumbs/${user.avatar}`,
+					name: user.metadata.team_name ? user.metadata.team_name : user.display_name,
+					realname: recordManager[0].name,
+				}
+			} else {
+				trueManagers[recordManID] = {
+					avatar: `https://sleepercdn.com/images/v2/icons/player_default.webp`,
+					name: 'Unknown Manager',
+					realname: 'John Q. Rando',
 				}
 			}
 		}
@@ -277,7 +323,8 @@ export const getPreviousDrafts = async () => {
 			draftOrder,
 			draftType: officialDraft.type,
 			reversalRound: officialDraft.settings.reversal_round,
-			originalManagers
+			originalManagers,
+			trueManagers,
 		}
 		
 		if(originalManagers != currentManagers) {

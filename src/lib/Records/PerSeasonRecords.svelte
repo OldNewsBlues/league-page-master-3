@@ -24,6 +24,10 @@
             seasonBests: [],
             seasonWorsts: [],
             seasonEPERecords: [],
+            playerSeasonTOPS: [],
+            playerSeasonBests: [],
+            playerWeekTOPS: [],
+            playerWeekBests: [],
             showTies: false,
             year: loopYear
         }
@@ -40,7 +44,10 @@
         yearsObj[seasonWeekRecord.year].seasonBests = seasonWeekRecord.seasonBests;
         yearsObj[seasonWeekRecord.year].seasonWorsts = seasonWeekRecord.seasonWorsts;
         yearsObj[seasonWeekRecord.year].seasonEPERecords = seasonWeekRecord.seasonEPERecords;
-
+        yearsObj[seasonWeekRecord.year].playerSeasonTOPS = seasonWeekRecord.playerSeasonTOPS;
+        yearsObj[seasonWeekRecord.year].playerSeasonBests = seasonWeekRecord.playerSeasonBests;
+        yearsObj[seasonWeekRecord.year].playerWeekTOPS = seasonWeekRecord.playerWeekTOPS;
+        yearsObj[seasonWeekRecord.year].playerWeekBests = seasonWeekRecord.playerWeekBests;
     }
     
     for(const season in transactionTotals.seasons) {
@@ -143,7 +150,7 @@
 
 </script>
 
-{#each years as {waiversData, tradesData, weekRecords, weekLows, seasonLongRecords, seasonLongLows, showTies, winPercentages, fptsHistories, lineupIQs, year, blowouts, closestMatchups, weekBests, weekWorsts, seasonBests, seasonWorsts, allTimeWeekBests, allTimeWeekWorsts, allTimeSeasonBests, allTimeSeasonWorsts, seasonEPERecords}, ix}
+{#each years as {waiversData, tradesData, weekRecords, weekLows, seasonLongRecords, seasonLongLows, showTies, winPercentages, fptsHistories, lineupIQs, year, blowouts, closestMatchups, weekBests, weekWorsts, seasonBests, seasonWorsts, allTimeWeekBests, allTimeWeekWorsts, allTimeSeasonBests, allTimeSeasonWorsts, seasonEPERecords, playerSeasonTOPS, playerSeasonBests, playerWeekTOPS, playerWeekBests}, ix}
     <RecordsAndRankings
         {waiversData}
         {tradesData}
@@ -166,6 +173,10 @@
         {allTimeSeasonBests} 
         {allTimeSeasonWorsts}
         {seasonEPERecords}
+        {playerSeasonTOPS}
+        {playerSeasonBests}
+        {playerWeekTOPS}
+        {playerWeekBests}
         prefix={year}
         {currentManagers}
         {individualWeekRecords}

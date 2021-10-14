@@ -6,7 +6,7 @@ import { getLeagueUsers } from "./leagueUsers"
 import { waitForAll } from './multiPromise';
 import { get } from 'svelte/store';
 import {records} from '$lib/stores';
-import { loadPlayers } from '$lib/utils/helper';
+import { loadPlayers, getPreviousDrafts } from '$lib/utils/helper';
 
 export const getLeagueRecords = async (refresh = false) => {
 	if(get(records).seasonWeekRecords) {
@@ -23,8 +23,19 @@ export const getLeagueRecords = async (refresh = false) => {
 		}
 	}
 
-	const playersData = await loadPlayers().catch((err) => { console.error(err); });;
+	const playersData = await loadPlayers().catch((err) => { console.error(err); });
 	const playersInfo = playersData.players;
+
+	const previousDraftsData = await getPreviousDrafts().catch((err) => { console.error(err); });
+	let draftInfo = {};
+
+	for(const key in previousDraftsData) {
+		const prevDraft = previousDraftsData[key];
+		
+		if(!draftInfo[prevDraft.year]) {
+			draftInfo[prevDraft.year] = prevDraft;
+		}
+	}
 
 	const nflState = await getNflState().catch((err) => { console.error(err); });
 	let week = 0;
@@ -43,23 +54,32 @@ export const getLeagueRecords = async (refresh = false) => {
 
 	let allTimeMatchupDifferentials = [];
 
-	let leagueRosterRecords = {}; // every full season stat point (for each year and all years combined)
-	let seasonWeekRecords = []; // highest weekly points within a single season
-	let leagueWeekRecords = []; // highest weekly points within a single season
-	let leagueWeekLows = []; // lowest weekly points within a single season
-	let mostSeasonLongPoints = []; // 10 highest full season points
-	let leastSeasonLongPoints = []; // 10 lowest full season points
-	let allTimeBiggestBlowouts = []; // 10 biggest blowouts
-	let allTimeClosestMatchups = []; // 10 closest matchups
-	let individualWeekRecords = {}; // weekly scores/matchup data indexed by rosterID
-	let allTimeWeekBests = []; // each rosterID's highest scoring week
-	let allTimeWeekWorsts = []; // each rosterID's lowest scoring week
-	let allTimeSeasonBests = []; // each rosterID's highest scoring season
-	let allTimeSeasonWorsts = []; // each rosterID's lowest scoring season
-	let allTimeEPERecords = [];
+	let leagueRosterRecords = {}; 				// every full season stat point (for each year and all years combined)
+	let seasonWeekRecords = []; 				// highest weekly points within a single season
+	let leagueWeekRecords = [];					// highest weekly points within a single season
+	let leagueWeekLows = []; 					// lowest weekly points within a single season
+	let mostSeasonLongPoints = []; 				// 10 highest full season points
+	let leastSeasonLongPoints = []; 			// 10 lowest full season points
+	let allTimeBiggestBlowouts = []; 			// 10 biggest blowouts
+	let allTimeClosestMatchups = []; 			// 10 closest matchups
+	let individualWeekRecords = {}; 			// weekly scores/matchup data indexed by managerID
+	let allTimeWeekBests = []; 					// each manager's highest scoring week
+	let allTimeWeekWorsts = []; 				// each manager's lowest scoring week
+	let allTimeSeasonBests = []; 				// each manager's highest scoring season
+	let allTimeSeasonWorsts = []; 				// each manager's lowest scoring season
+	let allTimeEPERecords = [];					// each manager's all-time EPE stats
+	let playerATSeasonBests = []; 				// each manager's all-time leading individual starter (season)
+	let	playerATSeasonRecords = [];				// ranking all manager's all-time highest-scoring player (season), indexed by manager and season
+	let playerATWeekBests = [];					// each manager's all-time best scoring week by individual starters
+	let playerATWeekRecords = [];				// each manager's all-time best scoring week by individual starters, indexed by manager and season
+	let playerATWeekTOPS = [];					// 10 all-time best scoring weeks by individual starters
+	let playerATSeasonTOPS = [];				// 10 all-time best scoring seasons by individual starters
 	let leagueManagers = {};
 	let activeManagers = [];
 	let playerRecords = {};
+	let seasonPlayerRecords = {};
+	let seasonTeamPOSRecords = {};
+	let acquisitionRecords = {};
 
 	for(const managerID in managers) {
 		const manager = managers[managerID];
@@ -100,7 +120,36 @@ export const getLeagueRecords = async (refresh = false) => {
 		lastYear = year;
 	
 		const rosters = rosterRes.rosters;
-	
+		
+		for(const roster of rosters) {
+			const rosterID = roster.roster_id;		
+
+			let recordManager = leagueManagers[rosterID].filter(m => m.yearsactive.includes(year));
+			let recordManrosterID = recordManager[0].rosterID;
+			let recordManID = recordManager[0].managerID;
+			
+			const draftResults = draftInfo[year].draft;
+			for(const round in draftResults) {
+				const draftPicks = draftResults[round];
+
+				for(const pick in draftPicks) {
+					const draftPick = draftPicks[pick].player;
+
+					if(!acquisitionRecords[year]) {
+						acquisitionRecords[year] = {};
+					}
+
+					if(draftPick.rosterID == recordManrosterID) {
+
+						if(!acquisitionRecords[year][recordManID]) {
+							acquisitionRecords[year][recordManID] = [];
+						}
+						acquisitionRecords[year][recordManID].push(draftPick);
+					}
+				}
+			}
+		}
+
 		const originalManagers = {};
 	
 		for(const roster of rosters) {
@@ -224,6 +273,12 @@ export const getLeagueRecords = async (refresh = false) => {
 		let indivweeks = {};
 		let fptsWeeks = {};
 		
+		let duplicateKeyArr = [];
+
+		let playerWeekTOPS = [];				// top 10 player single-week scores
+		let	playerWeekBests = [];				// ranking all manager's highest-scoring player (week)
+		let playerWeekEfforts = [];
+		
 		// process all the matchups
 		for(const matchupWeek of matchupsData) {
 			let matchups = {};
@@ -269,7 +324,6 @@ export const getLeagueRecords = async (refresh = false) => {
 
 				const starters = matchup.starters;
 				const startersPTS = matchup.starters_points.sort((a, b) => b - a);
-				// startersPTS = startersPTS.sort((a, b) => b - a);
 
 				const players = matchup.players;
 				const playersPTS = matchup.players_points;
@@ -277,25 +331,50 @@ export const getLeagueRecords = async (refresh = false) => {
 				for(let i = 0; i < players.length; i++) {
 
 					const playerID = players[i];
-					const playerPoints = playersPTS[playerID];
-					const playerInfo = playersInfo[playerID];
 
-					let benched = new Boolean (true);
-					if(starters.includes(playerID)) {
-						benched = false;
+					if(!playerRecords[year]) {
+						playerRecords[year] = {};
 					}
+					if(!playerRecords[year][recordManID]) {
+						playerRecords[year][recordManID] = {};
+					}
+
+					const playerPoints = playersPTS[playerID];
 
 					let topStarter = new Boolean (false);
 					let starterRank;
+					let benched = new Boolean (true);
 
-					if(benched == false) {
+					if(starters.includes(playerID)) {
+						benched = false;
 						starterRank = startersPTS.indexOf(playerPoints) + 1;
 						if(startersPTS[0] == playerPoints) {
 							topStarter = true;
 						}
 					} else {
+						benched = true;
+						topStarter = false;
 						starterRank = 0;
 					}
+					
+					// idea for dupe check is to push unique info into array the first time the playerID is seen (so you can later check array for dupes)
+					let isDuplicate = new Boolean (false);
+					let playerInfo = playersInfo[playerID];
+					let duplicateCheck = {
+						fn: playerInfo.fn,
+						ln: playerInfo.ln,
+						pos: playerInfo.pos,
+						t: playerInfo.t,
+					}
+					if(!duplicateKeyArr[recordManID]) {
+						duplicateKeyArr[recordManID] = [];
+					}
+					if(!playerRecords[year][recordManID][playerID]) {
+						playerRecords[year][recordManID][playerID] = [];
+						duplicateKeyArr[recordManID].push(duplicateCheck);
+					}
+					// duplicateKeyArr[recordManID].forEach(str => isDuplicate[str] ? alert(str) : isDuplicate[str] = true);
+					// DUPE CHECK NOT COMPLETE/WORKING (& not entirely sure if necessary)
 
 					const playerEntry = {		
 						recordManID,
@@ -305,25 +384,25 @@ export const getLeagueRecords = async (refresh = false) => {
 						rosterID: matchup.roster_id,
 						playerID,
 						playerPoints,
-						howAcquired: [],
 						benched,
+						howAcquired: null,
+						weekAcquired: null,
 						topStarter,
 						starterRank,
 						playerInfo,
-						pos: playerInfo.pos,
+						isDuplicate,
+					}
+
+					// right now, acquisitions is just a list of the manager's draft picks
+					let acquisitions = acquisitionRecords[year][recordManID];
+					for(let i = 0; i < acquisitions.length; i++) {
+						if(acquisitions[i].playerID == playerID) {
+							playerEntry.howAcquired = 'draft';
+							playerEntry.weekAcquired = 0;
+						} 
 					}
 					
-					// const season = parseInt(year);
-					if(!playerRecords[playerID]) {
-						playerRecords[playerID] = {};
-					}
-					if(!playerRecords[playerID][year]) {
-						playerRecords[playerID][year] = {};
-					}
-					if(!playerRecords[playerID][year][recordManID]) {
-						playerRecords[playerID][year][recordManID] = [];
-					}
-					playerRecords[playerID][year][recordManID].push(playerEntry);
+					playerRecords[year][recordManID][playerID].push(playerEntry);
 				}
 				
 			}
@@ -358,12 +437,252 @@ export const getLeagueRecords = async (refresh = false) => {
 				matchupDifferentials.push(matchupDifferential);
 			}
 		}
+
+		// first time around, create per-season objects for season-long player & team/pos records
+		if(!seasonPlayerRecords[year]) {
+			seasonPlayerRecords[year] = {};
+		}
+		if(!seasonTeamPOSRecords[year]) {
+			seasonTeamPOSRecords[year] = {};
+		}
+
+		// create team/pos objects, setting baseline at 0
+		for(const recordManID in playerRecords[year]) {
+			const playerRecord = playerRecords[year][recordManID];
+
+			let	positionFPTS = {
+				QB: 0,
+				RB: 0,
+				WR: 0,
+				TE: 0,
+				K: 0,
+				DEF: 0,
+			};
+			let	teamFPTS = {
+				ARI: 0,
+				ATL: 0,
+				BAL: 0,
+				BUF: 0,
+				CAR: 0,
+				CHI: 0,
+				CIN: 0,
+				CLE: 0,
+				DAL: 0,
+				DEN: 0,
+				DET: 0,
+				GB: 0,
+				HOU: 0,
+				IND: 0,
+				JAX: 0,
+				KC: 0,
+				LAC: 0,
+				LAR: 0,
+				LV: 0,
+				MIA: 0,
+				MIN: 0,
+				NE: 0,
+				NO: 0,
+				NYG: 0,
+				NYJ: 0,
+				PHI: 0,
+				PIT: 0,
+				SEA: 0,
+				SF: 0,
+				TEN: 0,
+				TB: 0,
+				WAS: 0,
+			};
+
+			let playerWeekBest = 0;
+			let weekBestPlayer = null;
+
+			// NOTE: May need to remove duplicates (if any, eg., due to players changing IDs mid-season) before this point (otherwise they'd count twice towards totals)
+			for(const playerID in playerRecord) {
+				const playRec = playerRecord[playerID];
+
+				for(const key in playRec) {
+					const play = playRec[key];
+					
+					if(play.playerPoints > playerWeekBest && play.benched == false) {
+						playerWeekBest = play.playerPoints;
+
+						if(!playerWeekEfforts[recordManID]) {
+							playerWeekEfforts[recordManID] = [];
+						}
+						playerWeekEfforts[recordManID].push(playRec[key]);
+					}
+				}
+			}
+
+			for(const playerID in playerRecord) {
+				const playRec = playerRecord[playerID];
+				// // single-week ranks & records
 		
-		let weekBests = [];
-		let weekWorsts = [];
-		let seasonBests = [];
-		let seasonWorsts = [];
-		let seasonEPERecords = [];
+
+				for(let i = 0; i < playRec.length; i++) {
+					
+					// grab every player's score every week for season & all-time single-week records
+					const pWTEntry = {
+						playerInfo: playRec[i].playerInfo,
+						playerID,
+						fpts: playRec[i].playerPoints,
+						manager: playRec[i].manager,
+						recordManID,
+						year: playRec[i].year,
+						week: playRec[i].week
+					}
+
+					playerWeekTOPS.push(pWTEntry);
+					playerATWeekTOPS.push(pWTEntry);
+				}
+				
+				// season-long ranks & records
+
+				let weeksStarted = 0; 			// # of weeks manager started player
+				let	numWeeksOwned = 0;			// # of weeks manager owned player
+				let	whichWeeksOwned = [];		// array of weeks when manager owned player
+				let	playerFPTSscored = 0;		// total (season) FPTS player scored as a starter for manager
+				let playerFPTSposs = 0;			// total (season) FPTS player scored while on manager's roster (ie. including when on bench)
+				let	totalTopStarter = 0;		// # of weeks where player was the manager's highest-scoring starter
+
+				numWeeksOwned = playRec.length;
+
+				for(let i = 0; i < playRec.length; i++) {
+
+					playerFPTSposs += playRec[i].playerPoints;
+					whichWeeksOwned.push(playRec[i].week);
+
+					if(playRec[i].benched == false) {
+
+						weeksStarted++;
+						playerFPTSscored += playRec[i].playerPoints;
+
+						teamFPTS[playRec[i].playerInfo.t] += playRec[i].playerPoints;
+						positionFPTS[playRec[i].playerInfo.pos] += playRec[i].playerPoints;
+
+						if(playRec[i].topStarter == true) {
+							totalTopStarter++;
+						}
+					}
+				}
+
+				if(!seasonPlayerRecords[year][recordManID]) {
+					seasonPlayerRecords[year][recordManID] = {};
+				}
+				if(!seasonPlayerRecords[year][recordManID][playerID]) {
+					seasonPlayerRecords[year][recordManID][playerID] = {	
+						recordManID,
+						playerID,
+						manager: originalManagers[recordManID],
+						playerInfo: playersInfo[playerID],
+						year,
+						weeksStarted,
+						numWeeksOwned,
+						whichWeeksOwned,
+						playerFPTSscored,
+						playerFPTSposs,
+						totalTopStarter,
+					}
+				}
+			}
+
+			if(!seasonTeamPOSRecords[year][recordManID]) {
+				seasonTeamPOSRecords[year][recordManID] = {
+					positionFPTS,
+					teamFPTS,
+					manager: originalManagers[recordManID],
+					recordManID,
+					year,
+				}
+			}
+		}	
+		
+		for(const recordManID in playerWeekEfforts) {
+			const playerWeekEffort = playerWeekEfforts[recordManID];
+			const pWBest = playerWeekEffort[playerWeekEffort.length - 1]
+
+			const pWBEntry = {
+				playerInfo: pWBest.playerInfo,
+				playerID: pWBest.playerID,
+				fpts: pWBest.playerPoints,
+				manager: pWBest.manager,
+				recordManID: pWBest.recordManID,
+				year: pWBest.year,
+				week: pWBest.week,
+			}
+
+			playerWeekBests.push(pWBEntry);
+
+			if(!playerATWeekRecords[recordManID]){
+				playerATWeekRecords[recordManID] = [];
+			}
+			playerATWeekRecords[recordManID].push(pWBEntry);
+		}
+		
+		// create season-record arrays 
+		let weekBests = [];						// ranking all managers' personal best week of season
+		let weekWorsts = [];					// ranking......personal worst.....
+		let seasonBests = [];					// ranking all managers' personal season-long top scores
+		let seasonWorsts = [];					// ranking......personal lows......
+		let seasonEPERecords = [];				// ranking all managers' personal season-long EPE stats
+		let playerSeasonTOPS = [];				// top 10 player season-long scores
+		let	playerSeasonBests = [];				// ranking all manager's highest-scoring player (season)
+
+		// calculate season records
+		for(const recordManID in seasonPlayerRecords[year]) {
+			const seasonPlayerRecord = seasonPlayerRecords[year][recordManID];
+			let playerSeasonBest = 0;
+			let seasonBestPlayer = null;
+
+			for(const playerID in seasonPlayerRecord) {
+				const player = seasonPlayerRecord[playerID];
+				const fptspg = player.playerFPTSscored / player.weeksStarted
+
+				const pSTEntry = {
+					playerInfo: player.playerInfo,
+					playerID,
+					fpts: player.playerFPTSscored,
+					weeksStarted: player.weeksStarted,
+					fptspg,
+					totalTopStarter: player.totalTopStarter,
+					manager: player.manager,
+					recordManID,
+					year,
+				}
+				playerSeasonTOPS.push(pSTEntry);
+				playerATSeasonTOPS.push(pSTEntry);
+			}
+
+			for(const key in seasonPlayerRecord) {
+				const player = seasonPlayerRecord[key];
+
+				if(player.playerFPTSscored > playerSeasonBest) {
+					playerSeasonBest = player.playerFPTSscored;
+					seasonBestPlayer = player.playerID;
+				}
+			}
+
+			const fptspg = playerSeasonBest / seasonPlayerRecord[seasonBestPlayer].weeksStarted;
+
+			let pSBEntry = {
+				playerInfo: seasonPlayerRecord[seasonBestPlayer].playerInfo,
+				playerID: seasonPlayerRecord[seasonBestPlayer].playerID,
+				fpts: playerSeasonBest,
+				weeksStarted: seasonPlayerRecord[seasonBestPlayer].weeksStarted,
+				fptspg,
+				totalTopStarter: seasonPlayerRecord[seasonBestPlayer].totalTopStarter,
+				manager: seasonPlayerRecord[seasonBestPlayer].manager,
+				recordManID,
+				year,
+			}
+
+			playerSeasonBests.push(pSBEntry);
+
+			if(!playerATSeasonRecords[recordManID]) {
+				playerATSeasonRecords[recordManID] = [];
+			}
+			playerATSeasonRecords[recordManID].push(pSBEntry);
+		}
 
 		for(const recordManID in indivweeks) {
 			const indivweek = indivweeks[recordManID];
@@ -429,8 +748,10 @@ export const getLeagueRecords = async (refresh = false) => {
 						indivweek[i].epeLosses++;
 					}
 				}
+
 				// reduce epeTies by one every week to account for the roster "tying" its own score
 				indivweek[i].epeTies--;
+
 				// determine if roster was the highest or lowest scorer that week
 				// needs logic for (unlikely) scenario where you tie someone else for first/last place that week
 				if (indivweek[i].epeWins == fptsWeeks[indivweek.length - i].length - 1) {
@@ -502,12 +823,18 @@ export const getLeagueRecords = async (refresh = false) => {
 
 			seasonEPERecords.push(seasonEPEEntry);
 		}
-
+		
 		weekBests = weekBests.sort((a, b) => b.fpts - a.fpts);
 		weekWorsts = weekWorsts.sort((a, b) => b.fpts - a.fpts);
 		seasonBests = seasonBests.sort((a, b) => b.fpts - a.fpts);
 		seasonWorsts = seasonWorsts.sort((a, b) => b.fpts - a.fpts);
 		seasonEPERecords = seasonEPERecords.sort((a, b) => b.epePerc - a.epePerc);
+
+		playerSeasonTOPS = playerSeasonTOPS.sort((a, b) => b.fpts - a.fpts).slice(0, 10);
+		playerSeasonBests = playerSeasonBests.sort((a, b) => b.fpts - a.fpts);
+		playerWeekTOPS = playerWeekTOPS.sort((a, b) => b.fpts - a.fpts).slice(0, 10);
+		playerWeekBests = playerWeekBests.sort((a, b) => b.fpts - a.fpts);
+
 
 		matchupDifferentials = matchupDifferentials.sort((a, b) => b.differential - a.differential);
 		const biggestBlowouts = matchupDifferentials.slice(0, 10);
@@ -517,6 +844,7 @@ export const getLeagueRecords = async (refresh = false) => {
 			closestMatchups.push(matchupDifferentials.pop());
 		}
 
+		// per-season ranks & records to push thru seasonWeekRecords
 		const interSeasonEntry = {
 			year,
 			biggestBlowouts,
@@ -526,6 +854,10 @@ export const getLeagueRecords = async (refresh = false) => {
 			seasonBests,
 			seasonWorsts,
 			seasonEPERecords,
+			playerSeasonTOPS,
+			playerSeasonBests,
+			playerWeekTOPS,
+			playerWeekBests,
 			seasonPointsRecords: seasonPointsRecord.sort((a, b) => b.fpts - a.fpts).slice(0, 10),
 			seasonPointsLows: seasonPointsLow.sort((a, b) => a.fpts - b.fpts).slice(0, 10)
 		}
@@ -537,8 +869,69 @@ export const getLeagueRecords = async (refresh = false) => {
 			seasonWeekRecords.push(interSeasonEntry);
 		};
 		
+	} // SEASON LOOPS HERE
+
+	// calculating all-time player records
+	for(const recordManID in playerATWeekRecords) {
+		const season = playerATWeekRecords[recordManID];
+
+		let playerATWeekBest = 0;
+		let ATBestKey = null;
+
+		for(let i = 0; i < season.length; i++) {
+			if(season[i].fpts > playerATWeekBest) {
+				playerATWeekBest = season[i].fpts;
+				ATBestKey = i;
+			}
+		}
+
+		let pATWBEntry = {
+			playerInfo: season[ATBestKey].playerInfo,
+			playerID: season[ATBestKey].playerID,
+			fpts: season[ATBestKey].fpts,
+			manager: season[ATBestKey].manager,
+			recordManID: season[ATBestKey].recordManID,
+			year: season[ATBestKey].year,
+			week: season[ATBestKey].week,
+		};
+
+		playerATWeekBests.push(pATWBEntry);
+
 	}
 
+	for(const recordManID in playerATSeasonRecords) {
+		const season = playerATSeasonRecords[recordManID];
+
+		let playerATSeasonBest = 0;
+		let ATBestKey = null;
+
+		for(let i = 0; i < season.length; i++) {
+
+			if(season[i].fpts > playerATSeasonBest) {
+				playerATSeasonBest = season[i].fpts;
+				ATBestKey = i;
+			}
+		}
+
+		const fptspg = season[ATBestKey].fpts / season[ATBestKey].weeksStarted;
+
+		let pATSBEntry = {
+			playerInfo: season[ATBestKey].playerInfo,
+			playerID: season[ATBestKey].playerID,
+			fpts: season[ATBestKey].fpts,
+			weeksStarted: season[ATBestKey].weeksStarted,
+			fptspg,
+			totalTopStarter: season[ATBestKey].totalTopStarter,
+			manager: season[ATBestKey].manager,
+			recordManID: season[ATBestKey].recordManID,
+			year: season[ATBestKey].year,
+		};
+
+		playerATSeasonBests.push(pATSBEntry);
+
+	}
+	
+	// calculating all-time week/season records
 	for(const recordManID in individualWeekRecords) {
 		const individualWeekRecord = individualWeekRecords[recordManID];
 
@@ -663,6 +1056,9 @@ export const getLeagueRecords = async (refresh = false) => {
 	allTimeWeekWorsts = allTimeWeekWorsts.sort((a, b) => b.fpts - a.fpts);
 	allTimeSeasonBests = allTimeSeasonBests.sort((a, b) => b.fpts - a.fpts);
 	allTimeSeasonWorsts = allTimeSeasonWorsts.sort((a, b) => b.fpts - a.fpts);
+	playerATSeasonBests = playerATSeasonBests.sort((a, b) => b.fpts - a.fpts);
+	playerATWeekBests = playerATWeekBests.sort((a, b) => b.fpts - a.fpts);
+
 
 	allTimeEPERecords = allTimeEPERecords.sort((a, b) => b.epePerc - a.epePerc);
 
@@ -678,6 +1074,8 @@ export const getLeagueRecords = async (refresh = false) => {
 	leagueWeekLows = leagueWeekLows.sort((a, b) => a.fpts - b.fpts).slice(0, 10);
 	mostSeasonLongPoints = mostSeasonLongPoints.sort((a, b) => b.fpts - a.fpts).slice(0, 10);
 	leastSeasonLongPoints = leastSeasonLongPoints.sort((a, b) => a.fpts - b.fpts).slice(0, 10);
+	playerATSeasonTOPS = playerATSeasonTOPS.sort((a, b) => b.fpts - a.fpts).slice(0, 10);
+	playerATWeekTOPS = playerATWeekTOPS.sort((a, b) => b.fpts - a.fpts).slice(0, 10);
 
 
 	const recordsData = {
@@ -690,6 +1088,10 @@ export const getLeagueRecords = async (refresh = false) => {
 		allTimeEPERecords,
 		mostSeasonLongPoints,
 		leastSeasonLongPoints,
+		playerATSeasonTOPS,
+		playerATSeasonBests,
+		playerATWeekTOPS,
+		playerATWeekBests,
 		leagueWeekLows,
 		individualWeekRecords,
 		leagueWeekRecords,

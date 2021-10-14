@@ -11,7 +11,7 @@
         totals = newTransactions.totals;
     }
 
-    let {leagueRosterRecords, leagueWeekRecords, leagueWeekLows, individualWeekRecords, allTimeClosestMatchups, allTimeBiggestBlowouts, currentManagers, allTimeWeekBests, allTimeWeekWorsts, allTimeSeasonBests, allTimeSeasonWorsts, allTimeEPERecords, mostSeasonLongPoints, leastSeasonLongPoints, seasonWeekRecords, currentYear, lastYear} = leagueRecords;
+    let {leagueRosterRecords, leagueWeekRecords, leagueWeekLows, individualWeekRecords, allTimeClosestMatchups, allTimeBiggestBlowouts, currentManagers, allTimeWeekBests, allTimeWeekWorsts, allTimeSeasonBests, allTimeSeasonWorsts, allTimeEPERecords, mostSeasonLongPoints, leastSeasonLongPoints, seasonWeekRecords, currentYear, lastYear, playerATSeasonBests, playerATSeasonTOPS, playerATWeekTOPS, playerATWeekBests} = leagueRecords;
 
     const refreshRecords = async () => {
         const newRecords = await getLeagueRecords(true);
@@ -35,6 +35,10 @@
         seasonWeekRecords = newRecords.seasonWeekRecords;
         currentYear = newRecords.currentYear;
         lastYear = newRecords.lastYear;
+        playerATSeasonBests = newRecords.playerATSeasonBests;
+        playerATSeasonTOPS = newRecords.playerATSeasonTOPS;
+        playerATWeekTOPS = newRecords.playerATWeekTOPS;
+        playerATWeekBests = newRecords.playerATWeekBests;
     }
 
     if(stale) {
@@ -62,7 +66,7 @@
 
 <div class="rankingsWrapper">
     {#if leagueWeekRecords.length}
-        <AllTimeRecords transactionTotals={totals} {allTimeClosestMatchups} {allTimeBiggestBlowouts} {individualWeekRecords} {allTimeWeekBests} {allTimeWeekWorsts} {allTimeSeasonBests} {allTimeSeasonWorsts} {allTimeEPERecords} {leagueRosterRecords} {leagueWeekRecords} {currentManagers} {leagueWeekLows} {mostSeasonLongPoints} {leastSeasonLongPoints} />
+        <AllTimeRecords transactionTotals={totals} {allTimeClosestMatchups} {allTimeBiggestBlowouts} {individualWeekRecords} {allTimeWeekBests} {allTimeWeekWorsts} {allTimeSeasonBests} {allTimeSeasonWorsts} {allTimeEPERecords} {leagueRosterRecords} {leagueWeekRecords} {currentManagers} {leagueWeekLows} {mostSeasonLongPoints} {leastSeasonLongPoints} {playerATSeasonBests} {playerATSeasonTOPS} {playerATWeekTOPS} {playerATWeekBests} />
     {:else}
         <p class="empty">No records <i>yet</i>...</p>
     {/if}
