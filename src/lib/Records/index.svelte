@@ -11,7 +11,7 @@
         totals = newTransactions.totals;
     }
 
-    let {leagueRosterRecords, leagueWeekRecords, leagueWeekLows, individualWeekRecords, allTimeClosestMatchups, allTimeBiggestBlowouts, currentManagers, allTimeWeekBests, allTimeWeekWorsts, allTimeSeasonBests, allTimeSeasonWorsts, allTimeEPERecords, mostSeasonLongPoints, leastSeasonLongPoints, seasonWeekRecords, currentYear, lastYear, playerATSeasonBests, playerATSeasonTOPS, playerATWeekTOPS, playerATWeekBests} = leagueRecords;
+    let {leagueRosterRecords, leagueWeekRecords, leagueWeekLows, individualWeekRecords, allTimeClosestMatchups, allTimeBiggestBlowouts, currentManagers, allTimeWeekBests, allTimeWeekWorsts, allTimeSeasonBests, allTimeSeasonWorsts, allTimeEPERecords, mostSeasonLongPoints, leastSeasonLongPoints, seasonWeekRecords, currentYear, lastYear, playerATSeasonBests, playerATSeasonTOPS, playerATWeekTOPS, playerATWeekBests, playerATWeekMissedBests} = leagueRecords;
 
     const refreshRecords = async () => {
         const newRecords = await getLeagueRecords(true);
@@ -39,6 +39,12 @@
         playerATSeasonTOPS = newRecords.playerATSeasonTOPS;
         playerATWeekTOPS = newRecords.playerATWeekTOPS;
         playerATWeekBests = newRecords.playerATWeekBests;
+        playerATWeekMissedBests = newRecords.playerATWeekMissedBests;
+        // playerATPlayoffBests = newRecords.playerATPlayoffBests;
+		// playerATPOWeekBests = newRecords.playerATPOWeekBests;
+		// playerATPOWeekMissedBests = newRecords.playerATPOWeekMissedBests;
+		// playerATPOWeekTOPS = newRecords.playerATPOWeekTOPS;
+		// playerATPlayoffTOPS = newRecords.playerATPlayoffTOPS;
     }
 
     if(stale) {
@@ -66,7 +72,7 @@
 
 <div class="rankingsWrapper">
     {#if leagueWeekRecords.length}
-        <AllTimeRecords transactionTotals={totals} {allTimeClosestMatchups} {allTimeBiggestBlowouts} {individualWeekRecords} {allTimeWeekBests} {allTimeWeekWorsts} {allTimeSeasonBests} {allTimeSeasonWorsts} {allTimeEPERecords} {leagueRosterRecords} {leagueWeekRecords} {currentManagers} {leagueWeekLows} {mostSeasonLongPoints} {leastSeasonLongPoints} {playerATSeasonBests} {playerATSeasonTOPS} {playerATWeekTOPS} {playerATWeekBests} />
+        <AllTimeRecords transactionTotals={totals} {allTimeClosestMatchups} {allTimeBiggestBlowouts} {individualWeekRecords} {allTimeWeekBests} {allTimeWeekWorsts} {allTimeSeasonBests} {allTimeSeasonWorsts} {allTimeEPERecords} {leagueRosterRecords} {leagueWeekRecords} {currentManagers} {leagueWeekLows} {mostSeasonLongPoints} {leastSeasonLongPoints} {playerATSeasonBests} {playerATSeasonTOPS} {playerATWeekTOPS} {playerATWeekBests} {playerATWeekMissedBests} />
     {:else}
         <p class="empty">No records <i>yet</i>...</p>
     {/if}

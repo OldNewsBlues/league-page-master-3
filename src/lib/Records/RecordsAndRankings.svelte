@@ -6,7 +6,7 @@
 
   	import DataTable, { Head, Body, Row, Cell } from '@smui/data-table'; 
 
-    export let waiversData, tradesData, weekRecords, weekLows, seasonLongRecords, leastSeasonLongPoints, showTies, winPercentages, fptsHistories, lineupIQs, prefix, blowouts, closestMatchups, weekBests, weekWorsts, seasonBests, seasonWorsts, seasonEPERecords, playerSeasonTOPS, playerSeasonBests, playerATSeasonTOPS, playerATSeasonBests, playerATWeekBests, playerWeekBests, playerATWeekTOPS, playerWeekTOPS, allTimeEPERecords, allTimeSeasonBests, allTimeSeasonWorsts, allTimeWeekBests, allTimeWeekWorsts, individualWeekRecords, currentManagers, allTime=false, last=false;
+    export let waiversData, tradesData, weekRecords, weekLows, seasonLongRecords, leastSeasonLongPoints, showTies, winPercentages, fptsHistories, lineupIQs, prefix, blowouts, closestMatchups, weekBests, weekWorsts, seasonBests, seasonWorsts, seasonEPERecords, playerSeasonTOPS, playerSeasonBests, playerATSeasonTOPS, playerATSeasonBests, playerATWeekBests, playerATWeekMissedBests, playerWeekBests, playerWeekMissedBests, playerATWeekTOPS, playerWeekTOPS, allTimeEPERecords, allTimeSeasonBests, allTimeSeasonWorsts, allTimeWeekBests, allTimeWeekWorsts, individualWeekRecords, currentManagers, allTime=false, last=false;
 
     let leagueManagers = {};
     const numManagers = managers.length;
@@ -133,6 +133,16 @@
         short: "Week Leaders"
     }
 
+    const playerWeekMissedBestGraph = {
+        stats: playerWeekMissedBests,
+        x: "Manager",
+        y: "Fantasy Points Earned",
+        stat: "",
+        header: "Top Benching Mistakes",
+        field: "fpts",
+        short: "Worst Benching"
+    }
+
     for(let i = 1; i <= numManagers; i++) {
         if(waiversData.find(w => w.recordManID == i)) {
             const trade = waiversData.find(w => w.recordManID == i);
@@ -184,6 +194,7 @@
     graphs.push(generateGraph(epeWinPercGraph));
     graphs.push(generateGraph(playerSeasonBestGraph));
     graphs.push(generateGraph(playerWeekBestGraph));
+    graphs.push(generateGraph(playerWeekMissedBestGraph));
 
     const transactions = [];
     
@@ -217,6 +228,7 @@
         "EPE Records",
         "Season Leaders",
         "Week Leaders",
+        "Worst Benching",
     ]
     if(!lineupIQs[0]?.potentialPoints) {
         iqOffset = 1;
@@ -260,6 +272,9 @@
                 break;
             case 11 - (2 * iqOffset):
                 curTable = 10 - iqOffset;
+                break;
+            case 12 - (2 * iqOffset):
+                curTable = 11 - iqOffset;
                 break;
             default:
                 curTable = 0;
@@ -306,6 +321,9 @@
                 break;
             case 10 - iqOffset:
                 curGraph = 11 - (2 * iqOffset);
+                break;
+            case 11 - iqOffset:
+                curGraph = 12 - (2 * iqOffset);
                 break;
             default:
                 curGraph = 0;
@@ -400,7 +418,7 @@
         position: relative;
         display: flex;
         flex-wrap: nowrap;
-        width: 1100%;
+        width: 1200%;
 		transition: margin-left 0.8s;
     }
 
@@ -1324,6 +1342,53 @@
                                     {/if}
                                 <Cell class="center">{playerATWeekBest.week}</Cell>
                                 <Cell class="center">{round(playerATWeekBest.fpts)}</Cell>
+                            </Row>
+                        {/each}
+                    </Body>
+                </DataTable>
+            {/if}
+        </div>
+
+        <div class="rankingTableWrapper">
+            {#if playerWeekMissedBests && playerWeekMissedBests.length}
+                <DataTable class="rankingTable">
+                    <Head>
+                        <Row>
+                            <Cell class="header" colspan=8>
+                                {prefix} {"Top Benching Mistakes"}
+                            </Cell>
+                        </Row>
+                        <Row>
+                            <Cell class="header rank"></Cell>
+                            <Cell class="header">Player</Cell>
+                            <Cell class="header">POS</Cell>
+                            <Cell class="header">NFL Team</Cell>
+                            <Cell class="header">Manager</Cell>
+                                {#if allTime}
+                                    <Cell class="header">Year</Cell>
+                                {/if}
+                            <Cell class="header">Week</Cell>
+                            <Cell class="header">PF</Cell>
+                        </Row>
+                    </Head>
+                    <Body>
+                        {#each playerWeekMissedBests as playerATWeekMissedBest, ix}
+                            <Row>
+                                <Cell class="rank">{ix + 1}</Cell>
+                                <Cell class="left">{playerATWeekMissedBest.playerInfo.fn} {playerATWeekMissedBest.playerInfo.ln}</Cell>
+                                <Cell class="center">{playerATWeekMissedBest.playerInfo.pos}</Cell>
+                                <Cell class="center">{playerATWeekMissedBest.playerInfo.t}</Cell>
+                                <Cell class="cellName" on:click={() => gotoManager(playerATWeekMissedBest.recordManID)}>
+                                    {playerATWeekMissedBest.manager.realname}
+                                    {#if !allTime}
+                                        <div class="fantasyTeamName">({playerATWeekMissedBest.manager.name})</div>
+                                    {/if}
+                                </Cell>
+                                    {#if allTime}
+                                        <Cell class="center">{playerATWeekMissedBest.year}</Cell>
+                                    {/if}
+                                <Cell class="center">{playerATWeekMissedBest.week}</Cell>
+                                <Cell class="center">{round(playerATWeekMissedBest.fpts)}</Cell>
                             </Row>
                         {/each}
                     </Body>
